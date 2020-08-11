@@ -1,0 +1,225 @@
+-- Available Controls --
+ip_address = Controls['device'][1]
+port = Controls['device'][2]
+status = Controls['device'][3]
+deviceStatus = Controls['status'][1]
+inputActive = Controls['status'][2]
+mute = Controls['mute']
+connected = Controls['connected'][1]
+powerLED = Controls['connected'][2]
+power = Controls['power']
+input = Controls['input']
+SOCKET = TcpSocket.New()
+SOCKET.ReadTimeout = 0
+SOCKET.WriteTimeout = 0
+SOCKET.ReconnectTimeout = 5
+refrashStatusTimer = Timer.New()
+algoritam = nil
+green = '#007C00'
+red= '#FF0000' 
+neutral = '#7C7C7C'
+yellow = "#FFF8F400"
+
+power_state = {"on", "off"}
+input_state = {"computer", "video", "hdmi", "hdmi2", "usb-a", "usb-b", "lan", "displayport", "slot", "hdbaset", "apps", "bnc"}
+mute = {"video", "audio"}
+alphabet = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z" }
+
+function refreshStatus()
+  SOCKET:Write('power\r')
+  Timer.CallAfter(function()
+      SOCKET:Write('input\r') 
+  end,1)
+end
+
+function powerButtonNeutral()
+  numberPowerButton = #power
+  for i=1,numberPowerButton do
+    power[i].Color = neutral
+  end
+end
+
+function powerLEDStatus()
+  if(powerLED.Boolean == true) then
+    powerLED.Color = yellow
+  else
+    powerLED.Color = neutral
+  end
+end
+
+function powerButtonColor(index, value)
+  powerButtonNeutral()
+  if(index == 1) then
+    power[index].Color = green
+    deviceStatus.Color = green
+    deviceStatus.String = "POWER " .. string.upper(value)
+    powerLED.Boolean = true
+    powerLEDStatus()
+  elseif(index == 2) then
+    power[index].Color = red
+    deviceStatus.Color = red
+    deviceStatus.String = "POWER " .. string.upper(value)
+    powerLED.Boolean = false
+    powerLEDStatus()
+  end
+end 
+
+function inputButtonColor(index, value)
+  numberInputButton = #input
+  for i=1,numberInputButton do
+    input[i].Color = neutral
+  end
+  input[index].Color = green
+  inputActive.String = string.upper(value) .. ' input is active'
+end
+
+function powerStatus (tab, val)
+  for index, value in ipairs(tab) do
+    if value == val then
+      powerButtonColor(index,value)
+      print(index)
+    end
+  end
+  return false
+end
+
+function inputStatus (tab, val)
+  for index, value in ipairs(tab) do
+    if value == val then
+      inputButtonColor(index, value)
+    end
+  end
+  return false
+end
+
+--Fetch message from device
+SOCKET.Data = function()
+  message = SOCKET:ReadLine(TcpSocket.EOL.Any)
+  print(message)
+  while (message ~= nil) do
+    local role, state = string.match(message, "(.*) (%g*)")
+    if(role == "power") then
+      powerStatus(power_state, state)
+    elseif(role == "input") then
+      inputStatus(input_state, state)
+    end
+    message = SOCKET:ReadLine(TcpSocket.EOL.Any)
+  end 
+end
+
+
+--Refresh Timer
+refrashStatusTimer.EventHandler = function()
+  refreshStatus()
+end
+
+-- Power Button
+for i,c in pairs(power) do
+  if(tonumber(i) ~= nil) then
+    c.EventHandler = function(c)
+      SOCKET:Write('power ' .. power_state[i] ..'\r')
+      Controls['power'][i].Color = yellow
+      Timer.CallAfter(function()
+        SOCKET:Write('power\r')
+        print('radi')
+      end,20)
+    end
+  end
+end
+
+-- Input Button
+for i,c in pairs(input) do
+  if(tonumber(i) ~= nil) then
+    c.EventHandler = function(c)
+      SOCKET:Write('input ' .. input_state[i] ..'\r')
+      Timer.CallAfter(function()
+        SOCKET:Write('input\r')
+      end,20)
+    end
+  end
+end
+
+
+
+-- Condition Socket
+SOCKET.EventHandler = function(SOCKET, evt, err)
+  if evt == TcpSocket.Events.Connected then
+    status.String = "Socket connected"
+    connected.Boolean = true
+  elseif evt == TcpSocket.Events.Reconnect then
+    status.String = "Socket reconnecting.."
+    connected.Boolean = false
+  elseif evt == TcpSocket.Events.Data then
+    print("")
+    message = SOCKET:ReadLine(TcpSocket.EOL.Any)
+    while(message ~= nil) do
+      status.String = message;
+      message = SOCKET:ReadLine(TcpSocket.EOL.Any)
+    end
+  elseif evt == TcpSocket.Events.Closed then
+    status.String = "Socket closed by remote"
+    connected.Boolean = false
+  elseif evt == TcpSocket.Events.Error then
+    status.String = "Socket closed due to error ", err
+    connected.Boolean = false
+  elseif evt == TcpSocket.Events.Timeout then
+    status.String = "socket closed due to timeout"
+    connected.Boolean = false
+  else
+    status.String = "unknown socket event", evt
+    connected.Boolean = false
+  end
+end;
+
+-- Connect socket
+SOCKET:Connect(ip_address.String, tonumber(port.String))
+
+-- Reconnect socket
+ip_address.EventHandler = function()
+  SOCKET:Disconnect()
+  SOCKET:Connect(ip_address.String, tonumber(port.String))
+end
+port.EventHandler = function()
+  SOCKET:Disconnect()
+  SOCKET:Connect(ip_address.String, tonumber(port.String))
+end
+
+-- Main code
+refrashStatusTimer:Start(120)
+
+--TEST DATA
+for i,c in pairs(power) do
+  if(tonumber(i) ~= nil) then
+    c.EventHandler = function(c)
+      print('power ' .. power_state[i] ..'\r')
+      Controls['power'][i].Color = yellow
+    end
+  end
+end
+
+
+message = "power on"
+--message = "input computer"
+
+local role, state = string.match(message, "(.*) (%g*)")
+if(role == "power") then
+  powerStatus(power_state, state)
+elseif(role == "input") then
+  inputStatus(input_state, state)
+end
+
+-- DEVELOPMENT FUNCTION
+
+---------------------------
+-- Mute Button
+for i=1,2 do
+  mute[i].EventHandler = function()
+    if(mute[i].Boolean == true) then
+      --SOCKET:Write('avmute ' .. mute[i] ..'\r')
+      print('avmute ' .. mute[i] ..'\r')
+    elseif(mute[i].Boolean == true) then
+      --SOCKET:Write('avmute ' .. mute[i] ..'\r')
+      print('avmute ' .. mute[i] ..'\r')
+    end
+  end
+end
