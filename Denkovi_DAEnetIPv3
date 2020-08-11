@@ -1,0 +1,138 @@
+address = Controls['address'].String
+password = Controls['password'].String
+
+-- Relay status function
+function relayStatus()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&AS8=?&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  Timer.CallAfter(function()
+    HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&AS9=?&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  end,0.1) 
+  Timer.CallAfter(function()
+    HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASA=?&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  end,0.2)
+  Timer.CallAfter(function()
+    HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASB=?&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  end,0.3)
+  Timer.CallAfter(function()
+    HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASC=?&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  end,0.4) 
+end
+
+-- Relay SET state function
+function relayON(i)
+  Controls['status'][i].String = "POWER ON"
+  Controls['status'][i].Color = "#007C00"
+  Controls['set'][i].Color = "#007C00"
+  Controls['release'][i].Color = "#7C7C7C"
+end
+
+-- Relay RELEASE state function
+function relayOFF(i)
+  Controls['status'][i].String = "POWER OFF"
+  Controls['status'][i].Color = "#FF0000"
+  Controls['release'][i].Color = "#FF0000"
+  Controls['set'][i].Color = "#7C7C7C"
+end
+
+-- SET relay
+Controls['set'][1].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&AS8=1&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayON(1)
+end
+
+Controls['set'][2].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&AS9=1&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayON(2)
+end
+
+Controls['set'][3].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASA=1&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayON(3)
+end
+
+Controls['set'][4].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASB=1&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayON(4)
+end
+
+Controls['set'][5].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASC=1&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayON(5)
+end
+
+-- END set relay
+
+-- RELEASE relay
+Controls['release'][1].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&AS8=0&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayOFF(1)
+end
+
+Controls['release'][2].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&AS9=0&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayOFF(2)
+end
+
+Controls['release'][3].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASA=0&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayOFF(3)
+end
+
+Controls['release'][4].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASB=0&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayOFF(4)
+end
+
+Controls['release'][5].EventHandler = function()
+  HttpClient.Download { Url = "http://"..address.."/command.html?P="..password.."&ASC=0&", Headers = { ["Content-Type"] = "application/json" } , Timeout = 30, EventHandler = done }
+  --relayOFF(5)
+end
+
+--END release relay
+
+-- Relay state timer
+RelayStateTimer = Timer.New()
+RelayStateTimer.EventHandler = function()
+  relayStatus()
+end
+RelayStateTimer:Start(180)
+
+-- RELAY STATUS FUNCTION
+function done(tbl, code, data, err, headers)
+  if string.match(data, 'AS8') then
+    if string.match(data, '=0') then
+      relayOFF(1)
+      Controls['log'].String = address .. ', Relay 1 OFF'
+    elseif string.match(data, '=1') then
+      relayON(1)
+      Controls['log'].String = address .. ', Relay 1 ON'
+    end
+  elseif string.match(data, 'AS9') then
+    if string.match(data, '=0') then
+      relayOFF(2)
+    elseif string.match(data, '=1') then
+      relayON(2)
+    end
+      elseif string.match(data, 'ASA') then
+    if string.match(data, '=0') then
+      relayOFF(3)
+    elseif string.match(data, '=1') then
+      relayON(3)
+    end
+      elseif string.match(data, 'ASB') then
+    if string.match(data, '=0') then
+      relayOFF(4)
+    elseif string.match(data, '=1') then
+      relayON(4)
+    end
+      elseif string.match(data, 'ASC') then
+    if string.match(data, '=0') then
+      relayOFF(5)
+    elseif string.match(data, '=1') then
+      relayON(5)
+    end
+  end 
+end
+--END relay status function
+
+relayStatus()
