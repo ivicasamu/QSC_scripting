@@ -1,2 +1,3 @@
 # QSC_scripting
-Ovo je repositorij sa modulima za upravljanje raznim uređajima preko QSC sustava. Ovi moduli se koriste u raznim projektima i nadograđuju se kako projekti zahtjevaju
+
+This is repository with modules for control external devices via QSC system. Modules are using in projects and it will be upgraded on every new project.
