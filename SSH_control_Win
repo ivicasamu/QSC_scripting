@@ -1,0 +1,129 @@
+device = Ssh.New()
+IP = Controls.IP_Address.String.. '.'
+Wol = UdpSocket.New()
+green = "#007C00"
+red = "#FF0000"
+yellow = "#FFF8F400"
+neutral = "#7C7C7C"
+
+function deviceNeutral()
+  Controls['restart'].Color = neutral
+  Controls['hibernate'].Color = neutral
+  Controls['wol'].Color = neutral
+  Controls['Status'].String = ""
+  Controls['Status'].Color = neutral
+end
+
+function deviceOnline()
+  deviceNeutral()
+  Controls['Status'].String = "Device ONLINE"
+  Controls['Status'].Color = green
+  Controls['restart'].Color = neutral
+  Controls['hibernate'].Color = neutral
+  Controls['wol'].Color = green
+end
+
+function deviceOffline()
+  deviceNeutral()
+  Controls['Status'].String = "Device OFFLINE"
+  Controls['Status'].Color = red
+  Controls['restart'].Color = neutral
+  Controls['hibernate'].Color = red
+  Controls['wol'].Color = neutral
+end
+
+function deviceRestart()
+  deviceNeutral()
+  Controls['Status'].String = "Device RESTARTING"
+  Controls['Status'].Color = yellow
+  Controls['restart'].Color = yellow
+  Controls['hibernate'].Color = neutral
+  Controls['wol'].Color = neutral
+  myping:stop()
+end
+
+-- PING
+function ping(address)
+  myping = Ping.New(address)
+  myping:start(false)
+  myping:setPingInterval(10.0)
+  myping.EventHandler = function(response)
+    deviceOnline()
+  end
+  myping.ErrorHandler = function(response)
+    deviceOffline()
+  end
+end
+
+-- RESTART
+Controls['restart'].EventHandler = function()
+  if (not (Controls['IP_Address'].String == '')) and (not (Controls['Port'].String == ''))  and (not (Controls['UserName'].String == ''))  and (not (Controls['Password'].String == '')) then
+    local success, err = pcall(function() device:Connect(Controls['IP_Address'].String, Controls['Port'].Value, Controls['UserName'].String, Controls['Password'].String) end)
+    Controls['restart'].Color = yellow
+    print('restart PC')
+    Timer.CallAfter(function()
+      device:Write('shutdown /r\r\n')
+      deviceRestart()
+      Timer.CallAfter(function()
+        device:Disconnect()
+        myping:start(false)
+      end,20)
+    end,5)
+  end
+end
+
+-- HIBERNATE
+Controls['hibernate'].EventHandler = function()
+  if (not (Controls['IP_Address'].String == '')) and (not (Controls['Port'].String == ''))  and (not (Controls['UserName'].String == ''))  and (not (Controls['Password'].String == '')) then
+    local success, err = pcall(function() device:Connect(Controls['IP_Address'].String, Controls['Port'].Value, Controls['UserName'].String, Controls['Password'].String) end)
+    Controls['hibernate'].Color = yellow
+    print('hibernate PC')
+    Timer.CallAfter(function()
+      device:Write('shutdown /h\r\n')
+      deviceOffline()
+      Timer.CallAfter(function()
+        device:Disconnect()
+      end,5)
+    end,5)
+  end
+end
+
+-- WAKE ON LAN
+byte1 = string.char(tonumber(Controls['Mac_Address'][1].String,16))
+byte2 = string.char(tonumber(Controls['Mac_Address'][2].String,16))
+byte3 = string.char(tonumber(Controls['Mac_Address'][3].String,16))
+byte4 = string.char(tonumber(Controls['Mac_Address'][4].String,16))
+byte5 = string.char(tonumber(Controls['Mac_Address'][5].String,16))
+byte6 = string.char(tonumber(Controls['Mac_Address'][6].String,16))
+
+for k = 1,6 do
+  Controls['Mac_Address'][k].EventHandler = function()
+    byte1 = string.char(tonumber(Controls['Mac_Address'][1].String,16))
+    byte2 = string.char(tonumber(Controls['Mac_Address'][2].String,16))
+    byte3 = string.char(tonumber(Controls['Mac_Address'][3].String,16))
+    byte4 = string.char(tonumber(Controls['Mac_Address'][4].String,16))
+    byte5 = string.char(tonumber(Controls['Mac_Address'][5].String,16))
+    byte6 = string.char(tonumber(Controls['Mac_Address'][6].String,16))
+  end
+end
+
+
+Controls['IP_Address'].EventHandler = function()
+  IP = Controls['IP_Address'].String .. '.'
+  myping:stop()
+  ping(Controls['IP_Address'].String)
+  print(IP)
+end
+
+
+Controls['wol'].EventHandler = function()
+  Controls['wol'].Color = yellow
+  Packet = "\xFF\xFF\xFF\xFF\xFF\xFF"..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6..byte1..byte2..byte3..byte4..byte5..byte6
+  Wol:Open()
+  Wol:Send(IP, 9 , Packet)
+  print('wol PC')
+end
+
+--MAIN
+deviceNeutral()
+ping(Controls['IP_Address'].String)
